@@ -1,6 +1,6 @@
 # Demos for Move.elm
 
-There are three projects for demostrating `Move.elm` capabilities:
+There are three projects for demonstrating `Move.elm` capabilities:
 
 -   `Single.elm` for reordering a list
 -   `Multiple.elm` for moving items between lists. The lists can have different types.
