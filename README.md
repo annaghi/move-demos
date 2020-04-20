@@ -3,8 +3,8 @@
 There are three projects for demostrating `Move.elm` capabilities:
 
 -   `Single.elm` for reordering a list
--   `Multiple.elm` for moving items between list. The list can have different types.
--   `Table.elm` for moving items between list like in the XB table.
+-   `Multiple.elm` for moving items between lists. The lists can have different types.
+-   `Table.elm` for moving items between lists like in the XB table.
 
 If you want to switch between these demos you need to correct the `index.html` file near the Elm code injection (sorry).
 
