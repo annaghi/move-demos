@@ -1,0 +1,7 @@
+.vscode
+elm-stuff
+node_modules
+
+*.css
+*.css.map
+main.js
