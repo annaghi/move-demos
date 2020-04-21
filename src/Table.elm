@@ -239,7 +239,7 @@ cellsView : Key -> List Key -> List Key -> Html.Html Msg
 cellsView total rows cols =
     let
         _ =
-            Debug.log "check lazy" ""
+            Debug.log "check Html.Lazy" ""
     in
     (total :: rows)
         |> List.map
@@ -254,16 +254,16 @@ cellsView total rows cols =
 tableView : Model -> Html.Html Msg
 tableView model =
     let
-        totalHeader : Key
-        totalHeader =
+        total : Key
+        total =
             0
     in
     Html.div
         [ moduleClass |> WeakCss.nest "table" ]
         [ Html.div [ moduleClass |> WeakCss.nestMany [ "table", "corner" ] ] [ Html.text "corner" ]
-        , headersView Rows model.dndModel (totalHeader :: model.rows)
-        , headersView Cols model.dndModel (totalHeader :: model.cols)
-        , Html.Lazy.lazy3 cellsView totalHeader model.rows model.cols
+        , headersView Rows model.dndModel (total :: model.rows)
+        , headersView Cols model.dndModel (total :: model.cols)
+        , Html.Lazy.lazy3 cellsView total model.rows model.cols
         ]
 
 
@@ -284,7 +284,7 @@ view model =
     let
         cssVariables : String
         cssVariables =
-            -- (+) 1 for the total-col
+            -- (+) 1 for the total
             [ ( "--columns-count", (String.fromInt << (+) 1 << List.length) model.cols ) ]
                 |> List.map (\( key, value ) -> key ++ ":" ++ value ++ ";")
                 |> String.join ""
