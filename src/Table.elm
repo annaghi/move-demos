@@ -181,13 +181,21 @@ headerView headerClass states events item htmlId =
 keyedHeaderView : MovableList -> HeaderClass -> Move.Model MovableList Key -> Int -> Key -> ( String, Html.Html Msg )
 keyedHeaderView listId headerClass dndModel index item =
     let
-        htmlId : String
-        htmlId =
-            (String.fromInt >> (++) "id-") item
-
         isTotal : Bool
         isTotal =
             index == 0
+
+        htmlId : String
+        htmlId =
+            case ( listId, item ) of
+                ( Rows, 0 ) ->
+                    "row-0"
+
+                ( Cols, 0 ) ->
+                    "col-0"
+
+                _ ->
+                    (String.fromInt >> (++) "id-") item
 
         states : List ( String, Bool )
         states =
