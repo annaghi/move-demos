@@ -1,7 +1,11 @@
 .vscode
+
 elm-stuff
 node_modules
 
-*.css
-*.css.map
-main.js
+single/*
+!single/index.html
+
+multiple/*
+!multiple/index.html
+

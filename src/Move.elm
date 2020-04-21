@@ -2,7 +2,7 @@ module Move exposing
     ( System, create, Msg
     , Config, config
     , withContainer
-    , Info
+    , Info, Return
     , Model
     )
 
@@ -13,7 +13,7 @@ module Move exposing
 @docs Config, config
 @docs withContainer
 
-@docs Info
+@docs Info, Return
 @docs Model
 
 -}

@@ -1,9 +1,9 @@
 {
     "scripts": {
-        "watch:s:elm": "elm-live src/Single.elm --port=8088 --open --start-page=index.html --dir=. -- --output=main.js --debug",
-        "watch:m:elm": "elm-live src/Multiple.elm --port=8088 --open --start-page=index.html --dir=. -- --output=main.js --debug",
-        "watch:s:sass": "sass --watch src/single.scss:./single.css",
-        "watch:m:sass": "sass --watch src/multiple.scss:./multiple.css",
+        "watch:s:elm": "elm-live src/Single.elm --port=8081 --open --start-page=single/index.html -- --output=single/main.js --debug",
+        "watch:m:elm": "elm-live src/Multiple.elm --port=8082 --open --start-page=multiple/index.html -- --output=multiple/main.js --debug",
+        "watch:s:sass": "sass --watch src/single.scss:single/styles.css",
+        "watch:m:sass": "sass --watch src/multiple.scss:multiple/styles.css",
         "prewatch": "sass src:./",
         "s": "npm-run-all -p watch:s:*",
         "m": "npm-run-all -p watch:m:*"

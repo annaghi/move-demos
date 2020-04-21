@@ -33,7 +33,9 @@ body {
         overflow: auto;
         width: 600px;
         height: 450px;
+    }
 
+    &__container {
         display: flex;
         justify-content: space-evenly;
     }
@@ -41,6 +43,8 @@ body {
     &__list {
         display: flex;
         flex-direction: column;
+
+        border: 1px solid #dddddd;
 
         min-width: 200px;
 
@@ -64,8 +68,7 @@ body {
                 background-color: #a7d1c1;
             }
 
-            &.mouseover,
-            &.mouseover:first-child {
+            &.mouseover {
                 cursor: default;
                 cursor: grabbing;
                 background-color: transparent;
@@ -77,15 +80,15 @@ body {
                 cursor: grabbing;
             }
         }
+    }
 
-        &--ghost {
-            position: fixed;
-            top: 0;
-            left: 0;
+    &__ghost {
+        position: fixed;
+        top: 0;
+        left: 0;
 
-            box-sizing: border-box;
-            padding: 6px;
-            border: 4px solid #75b79e;
-        }
+        box-sizing: border-box;
+        padding: 6px;
+        border: 4px solid #75b79e;
     }
 }
