@@ -63,14 +63,19 @@ li {
         &--corner {
             grid-area: corner;
 
-            z-index: 1;
-            background-color: #dddddd;
-
             position: sticky;
             top: 0;
             left: 0;
 
+            z-index: 1;
+            background-color: #dddddd;
+
             padding: 10px;
+
+            cursor: default;
+            .drag-drop-occurring & {
+                cursor: grabbing;
+            }
         }
 
         &--rows {
@@ -107,14 +112,13 @@ li {
                 }
 
                 &.mouseover {
-                    cursor: default;
-                    cursor: grabbing;
                     background-color: transparent;
                     box-shadow: 0px 2px 0px 0px #d81293;
                     border-bottom: 1px solid #d81293;
                 }
 
-                .drag-drop-occurring & {
+                .drag-drop-occurring &,
+                .drag-drop-occurring &.total {
                     cursor: default;
                     cursor: grabbing;
                 }
@@ -133,7 +137,7 @@ li {
 
             display: grid;
             grid-auto-flow: column;
-            grid-auto-columns: $width-col;
+            grid-auto-columns: 1fr;
 
             &--item {
                 padding: 10px;
@@ -159,14 +163,13 @@ li {
                 }
 
                 &.mouseover {
-                    cursor: default;
-                    cursor: grabbing;
                     background-color: transparent;
                     box-shadow: 2px 0px 0px 0px #d81293;
                     border-right: 1px solid #d81293;
                 }
 
-                .drag-drop-occurring & {
+                .drag-drop-occurring &,
+                .drag-drop-occurring &.total {
                     cursor: default;
                     cursor: grabbing;
                 }
@@ -175,6 +178,11 @@ li {
 
         &--cells {
             grid-area: cells;
+
+            cursor: default;
+            .drag-drop-occurring & {
+                cursor: grabbing;
+            }
 
             &--row {
                 &--item {
@@ -192,11 +200,6 @@ li {
 
                     &.total {
                         background-color: #333333;
-                    }
-
-                    .drag-drop-occurring & {
-                        cursor: default;
-                        cursor: grabbing;
                     }
                 }
             }
