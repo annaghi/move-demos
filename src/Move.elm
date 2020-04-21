@@ -58,8 +58,8 @@ type alias Position =
 
 
 type alias Return listId item =
-    { dragListId : listId
-    , dropListId : listId
+    { dragList : listId
+    , dropList : listId
     , dragIndex : DragIndex
     , dropIndex : DropIndex
     , dragItem : item
@@ -95,8 +95,8 @@ type Model listId item
 
 
 type alias State listId item =
-    { dragListId : listId
-    , dropListId : listId
+    { dragList : listId
+    , dropList : listId
     , dragIndex : DragIndex
     , dropIndex : DropIndex
     , dragItem : item
@@ -171,8 +171,8 @@ withContainer containerElementId (Config options) =
 
 
 type alias Info listId item =
-    { dragListId : listId
-    , dropListId : listId
+    { dragList : listId
+    , dropList : listId
     , dragIndex : DragIndex
     , dropIndex : DropIndex
     , dragItem : item
@@ -187,8 +187,8 @@ info (Model model) =
         (\state ->
             Maybe.map2
                 (\dragElement dropElement ->
-                    { dragListId = state.dragListId
-                    , dropListId = state.dropListId
+                    { dragList = state.dragList
+                    , dropList = state.dropList
                     , dragIndex = state.dragIndex
                     , dropIndex = state.dropIndex
                     , dragItem = state.dragItem
@@ -423,15 +423,15 @@ updateState options msg state =
                     Cmd.none
             )
 
-        OverDropItem dropListId dropIndex dropElementId ->
+        OverDropItem dropList dropIndex dropElementId ->
             ( Nothing
-            , { state | dropListId = dropListId, dropIndex = dropIndex, dropElementId = dropElementId }
+            , { state | dropList = dropList, dropIndex = dropIndex, dropElementId = dropElementId }
             , Task.attempt (GotDropItem >> StateMsg) (Browser.Dom.getElement dropElementId)
             )
 
         LeaveDropItem ->
             ( Nothing
-            , { state | dropListId = state.dragListId, dropIndex = state.dragIndex }
+            , { state | dropList = state.dragList, dropIndex = state.dragIndex }
             , Cmd.none
             )
 
@@ -497,12 +497,12 @@ updateState options msg state =
 update : Config -> (Msg listId item -> msg) -> Msg listId item -> Model listId item -> ( Maybe (Return listId item), Model listId item, Cmd msg )
 update (Config options) toMsg msg (Model model) =
     case ( msg, model ) of
-        ( DownDragItem dragListId dragItem dragIndex dragElementId coordinates, _ ) ->
+        ( DownDragItem dragList dragItem dragIndex dragElementId coordinates, _ ) ->
             ( Nothing
             , Model <|
                 Just
-                    { dragListId = dragListId
-                    , dropListId = dragListId
+                    { dragList = dragList
+                    , dropList = dragList
                     , dragIndex = dragIndex
                     , dropIndex = dragIndex
                     , dragItem = dragItem
@@ -531,12 +531,12 @@ update (Config options) toMsg msg (Model model) =
 
         ( UpBrowser, Just state ) ->
             if
-                (state.dragListId == state.dropListId && state.dragIndex /= state.dropIndex)
-                    || (state.dragListId /= state.dropListId)
+                (state.dragList == state.dropList && state.dragIndex /= state.dropIndex)
+                    || (state.dragList /= state.dropList)
             then
                 ( Just
-                    { dragListId = state.dragListId
-                    , dropListId = state.dropListId
+                    { dragList = state.dragList
+                    , dropList = state.dropList
                     , dragIndex = state.dragIndex
                     , dropIndex = state.dropIndex
                     , dragItem = state.dragItem
@@ -563,18 +563,18 @@ update (Config options) toMsg msg (Model model) =
 
 
 dragEvents : (Msg listId item -> msg) -> listId -> item -> DragIndex -> DragElementId -> List (Html.Attribute msg)
-dragEvents toMsg dragListId dragItem dragIndex dragElementId =
+dragEvents toMsg dragList dragItem dragIndex dragElementId =
     [ Html.Events.preventDefaultOn "mousedown"
         (checkedPagePosition
-            |> Json.Decode.map (DownDragItem dragListId dragItem dragIndex dragElementId >> toMsg)
+            |> Json.Decode.map (DownDragItem dragList dragItem dragIndex dragElementId >> toMsg)
             |> Json.Decode.map (\msg -> ( msg, True ))
         )
     ]
 
 
 dropEvents : (Msg listId item -> msg) -> listId -> DropIndex -> DropElementId -> List (Html.Attribute msg)
-dropEvents toMsg dropListId dropIndex dropElementId =
-    [ Html.Events.onMouseOver (OverDropItem dropListId dropIndex dropElementId |> StateMsg |> toMsg)
+dropEvents toMsg dropList dropIndex dropElementId =
+    [ Html.Events.onMouseOver (OverDropItem dropList dropIndex dropElementId |> StateMsg |> toMsg)
     , Html.Events.onMouseLeave (LeaveDropItem |> StateMsg |> toMsg)
     ]
 

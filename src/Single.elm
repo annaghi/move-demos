@@ -10,7 +10,7 @@ import WeakCss
 
 
 
--- Move
+-- DND
 
 
 scrollableContainerId : String
@@ -18,11 +18,11 @@ scrollableContainerId =
     "id-container-scroll"
 
 
-system : Move.System Msg () Item
-system =
+dnd : Move.System Msg () Item
+dnd =
     Move.config
         |> Move.withContainer scrollableContainerId
-        |> Move.create MoveMsg
+        |> Move.create DnDMsg
 
 
 
@@ -41,7 +41,7 @@ type alias Model =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { dndModel = system.model
+    ( { dndModel = dnd.model
       , list = List.range 1 30 |> List.map (String.fromInt >> (++) "item-")
       }
     , Cmd.none
@@ -54,7 +54,7 @@ init =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    system.subscriptions model.dndModel
+    dnd.subscriptions model.dndModel
 
 
 
@@ -62,16 +62,16 @@ subscriptions model =
 
 
 type Msg
-    = MoveMsg (Move.Msg () Item)
+    = DnDMsg (Move.Msg () Item)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        MoveMsg moveMsg ->
+        DnDMsg dndMsg ->
             let
                 ( return, dndModel, dndCmd ) =
-                    system.update moveMsg model.dndModel
+                    dnd.update dndMsg model.dndModel
             in
             case return of
                 Just { dragIndex, dropIndex, dragItem } ->
@@ -178,7 +178,7 @@ keyedItemView dndModel index item =
 
         states : List ( String, Bool )
         states =
-            case system.info dndModel of
+            case dnd.info dndModel of
                 Just { dragIndex, dropIndex } ->
                     [ ( "placeholder", dragIndex == index )
                     , ( "mouseover", dropIndex == index && dragIndex /= index )
@@ -189,11 +189,11 @@ keyedItemView dndModel index item =
 
         events : List (Html.Attribute Msg)
         events =
-            if system.info dndModel == Nothing then
-                system.dragEvents () item index htmlId
+            if dnd.info dndModel == Nothing then
+                dnd.dragEvents () item index htmlId
 
             else
-                system.dropEvents () index htmlId
+                dnd.dropEvents () index htmlId
     in
     ( htmlId, itemView dndModel states events item htmlId )
 
@@ -207,10 +207,10 @@ listView dndModel list =
 
 ghostView : Move.Model () Item -> Html.Html Msg
 ghostView dndModel =
-    case system.info dndModel of
+    case dnd.info dndModel of
         Just { dragItem } ->
             Html.div
-                ((moduleClass |> WeakCss.nest "ghost") :: system.ghostStyles dndModel)
+                ((moduleClass |> WeakCss.nest "ghost") :: dnd.ghostStyles dndModel)
                 [ Html.text dragItem ]
 
         Nothing ->
@@ -222,7 +222,7 @@ view model =
     Html.main_
         [ moduleClass
             |> WeakCss.add "main"
-            |> WeakCss.withStates [ ( "drag-drop-occurring", system.info model.dndModel /= Nothing ) ]
+            |> WeakCss.withStates [ ( "drag-drop-occurring", dnd.info model.dndModel /= Nothing ) ]
         ]
         [ Html.div
             [ moduleClass |> WeakCss.nest "container-scroll"

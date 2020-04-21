@@ -10,10 +10,10 @@ import WeakCss
 
 
 
--- Move
+-- DND
 
 
-type MovableListId
+type MovableList
     = List1
     | List2
 
@@ -28,11 +28,11 @@ scrollableContainerId =
     "id-container-scroll"
 
 
-system : Move.System Msg MovableListId MovableItem
-system =
+dnd : Move.System Msg MovableList MovableItem
+dnd =
     Move.config
         |> Move.withContainer scrollableContainerId
-        |> Move.create MoveMsg
+        |> Move.create DnDMsg
 
 
 
@@ -40,7 +40,7 @@ system =
 
 
 type alias Model =
-    { dndModel : Move.Model MovableListId MovableItem
+    { dndModel : Move.Model MovableList MovableItem
     , list1 : List String
     , list2 : List Int
     }
@@ -48,7 +48,7 @@ type alias Model =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { dndModel = system.model
+    ( { dndModel = dnd.model
       , list1 = List.range 1 30 |> List.map (String.fromInt >> (++) "old-")
       , list2 = List.range 1 20
       }
@@ -62,7 +62,7 @@ init =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    system.subscriptions model.dndModel
+    dnd.subscriptions model.dndModel
 
 
 
@@ -70,16 +70,16 @@ subscriptions model =
 
 
 type Msg
-    = MoveMsg (Move.Msg MovableListId MovableItem)
+    = DnDMsg (Move.Msg MovableList MovableItem)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        MoveMsg moveMsg ->
+        DnDMsg dndMsg ->
             let
                 ( return, dndModel, dndCmd ) =
-                    system.update moveMsg model.dndModel
+                    dnd.update dndMsg model.dndModel
             in
             case return of
                 Just return_ ->
@@ -108,9 +108,9 @@ insertAt index item list =
     List.take index list ++ (item :: List.drop index list)
 
 
-move : Move.Return MovableListId MovableItem -> Model -> Model
-move { dragIndex, dragItem, dropListId, dropIndex } model =
-    case ( dragItem, dropListId ) of
+move : Move.Return MovableList MovableItem -> Model -> Model
+move { dragIndex, dragItem, dropList, dropIndex } model =
+    case ( dragItem, dropList ) of
         ( Item1 item1, List1 ) ->
             { model
                 | list1 =
@@ -131,16 +131,16 @@ move { dragIndex, dragItem, dropListId, dropIndex } model =
                         model.list2 |> List.filter ((/=) item2) |> insertAt dropIndex item2
             }
 
-        ( Item2 item2, List1 ) ->
-            { model
-                | list1 = insertAt dropIndex (convertItem2ToItem1 item2) model.list1
-                , list2 = List.filter ((/=) item2) model.list2
-            }
-
         ( Item1 item1, List2 ) ->
             { model
                 | list1 = List.filter ((/=) item1) model.list1
                 , list2 = insertAt dropIndex (convertItem1ToItem2 item1) model.list2
+            }
+
+        ( Item2 item2, List1 ) ->
+            { model
+                | list1 = insertAt dropIndex (convertItem2ToItem1 item2) model.list1
+                , list2 = List.filter ((/=) item2) model.list2
             }
 
 
@@ -164,7 +164,7 @@ item1View states events item htmlId =
         [ Html.text item ]
 
 
-keyedItem1View : Move.Model MovableListId MovableItem -> Int -> String -> ( String, Html.Html Msg )
+keyedItem1View : Move.Model MovableList MovableItem -> Int -> String -> ( String, Html.Html Msg )
 keyedItem1View dndModel index item =
     let
         htmlId : String
@@ -177,10 +177,10 @@ keyedItem1View dndModel index item =
 
         states : List ( String, Bool )
         states =
-            case system.info dndModel of
-                Just { dragListId, dropListId, dragIndex, dropIndex, dragItem } ->
-                    [ ( "placeholder", dragIndex == index && dragListId == List1 )
-                    , ( "mouseover", dropIndex == index && dropListId == List1 && dragItem /= Item1 item )
+            case dnd.info dndModel of
+                Just { dragList, dropList, dragIndex, dropIndex, dragItem } ->
+                    [ ( "placeholder", dragIndex == index && dragList == List1 )
+                    , ( "mouseover", dropIndex == index && dropList == List1 && dragItem /= Item1 item )
                     ]
 
                 _ ->
@@ -188,16 +188,16 @@ keyedItem1View dndModel index item =
 
         events : List (Html.Attribute Msg)
         events =
-            if system.info dndModel == Nothing && not isFirstItem then
-                system.dragEvents List1 (Item1 item) index htmlId
+            if dnd.info dndModel == Nothing && not isFirstItem then
+                dnd.dragEvents List1 (Item1 item) index htmlId
 
             else
-                system.dropEvents List1 index htmlId
+                dnd.dropEvents List1 index htmlId
     in
     ( htmlId, item1View states events item htmlId )
 
 
-list1View : Move.Model MovableListId MovableItem -> List String -> Html.Html Msg
+list1View : Move.Model MovableList MovableItem -> List String -> Html.Html Msg
 list1View dndModel list =
     list
         |> List.indexedMap (keyedItem1View dndModel)
@@ -215,7 +215,7 @@ item2View states events item htmlId =
         [ Html.text <| String.fromInt item ]
 
 
-keyedItem2View : Move.Model MovableListId MovableItem -> Int -> Int -> ( String, Html.Html Msg )
+keyedItem2View : Move.Model MovableList MovableItem -> Int -> Int -> ( String, Html.Html Msg )
 keyedItem2View dndModel index item =
     let
         htmlId : String
@@ -228,10 +228,10 @@ keyedItem2View dndModel index item =
 
         states : List ( String, Bool )
         states =
-            case system.info dndModel of
-                Just { dragListId, dropListId, dragIndex, dropIndex, dragItem } ->
-                    [ ( "placeholder", dragIndex == index && dragListId == List2 )
-                    , ( "mouseover", dropIndex == index && dropListId == List2 && dragItem /= Item2 item )
+            case dnd.info dndModel of
+                Just { dragList, dropList, dragIndex, dropIndex, dragItem } ->
+                    [ ( "placeholder", dragIndex == index && dragList == List2 )
+                    , ( "mouseover", dropIndex == index && dropList == List2 && dragItem /= Item2 item )
                     ]
 
                 _ ->
@@ -239,35 +239,35 @@ keyedItem2View dndModel index item =
 
         events : List (Html.Attribute Msg)
         events =
-            if system.info dndModel == Nothing && not isFirstItem then
-                system.dragEvents List2 (Item2 item) index htmlId
+            if dnd.info dndModel == Nothing && not isFirstItem then
+                dnd.dragEvents List2 (Item2 item) index htmlId
 
             else
-                system.dropEvents List2 index htmlId
+                dnd.dropEvents List2 index htmlId
     in
     ( htmlId, item2View states events item htmlId )
 
 
-list2View : Move.Model MovableListId MovableItem -> List Int -> Html.Html Msg
+list2View : Move.Model MovableList MovableItem -> List Int -> Html.Html Msg
 list2View dndModel list =
     list
         |> List.indexedMap (keyedItem2View dndModel)
         |> Html.Keyed.node "ul" [ moduleClass |> WeakCss.nest "list" ]
 
 
-ghostView : Move.Model MovableListId MovableItem -> Html.Html Msg
+ghostView : Move.Model MovableList MovableItem -> Html.Html Msg
 ghostView dndModel =
-    case system.info dndModel of
+    case dnd.info dndModel of
         Just { dragItem } ->
             case dragItem of
                 Item1 item1 ->
                     Html.div
-                        ((moduleClass |> WeakCss.nest "ghost") :: system.ghostStyles dndModel)
+                        ((moduleClass |> WeakCss.nest "ghost") :: dnd.ghostStyles dndModel)
                         [ Html.text item1 ]
 
                 Item2 item2 ->
                     Html.div
-                        ((moduleClass |> WeakCss.nest "ghost") :: system.ghostStyles dndModel)
+                        ((moduleClass |> WeakCss.nest "ghost") :: dnd.ghostStyles dndModel)
                         [ Html.text <| String.fromInt item2 ]
 
         Nothing ->
@@ -279,7 +279,7 @@ view model =
     Html.main_
         [ moduleClass
             |> WeakCss.add "main"
-            |> WeakCss.withStates [ ( "drag-drop-occurring", system.info model.dndModel /= Nothing ) ]
+            |> WeakCss.withStates [ ( "drag-drop-occurring", dnd.info model.dndModel /= Nothing ) ]
         ]
         [ Html.div
             [ moduleClass |> WeakCss.nest "container-scroll"

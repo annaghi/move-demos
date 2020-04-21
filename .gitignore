@@ -3,9 +3,11 @@
 elm-stuff
 node_modules
 
-single/*
-!single/index.html
+_single/*
+!_single/index.html
 
-multiple/*
-!multiple/index.html
+_multiple/*
+!_multiple/index.html
 
+_table/*
+!_table/index.html
