@@ -5,7 +5,6 @@ import Html
 import Html.Attributes
 import Html.Keyed
 import Html.Lazy
-import List.Extra
 import Move
 import WeakCss
 

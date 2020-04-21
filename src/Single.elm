@@ -4,7 +4,6 @@ import Browser
 import Html
 import Html.Attributes
 import Html.Keyed
-import List.Extra
 import Move
 import WeakCss
 
