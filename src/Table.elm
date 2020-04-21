@@ -74,6 +74,11 @@ movableListToHeaderClass listId =
             "cols"
 
 
+headerCaption : Int -> String
+headerCaption =
+    String.fromInt
+
+
 
 -- SUBSCRIPTIONS
 
@@ -171,7 +176,7 @@ headerView headerClass states events item htmlId =
          ]
             ++ events
         )
-        [ Html.text ((String.fromInt >> (++) "header-") item) ]
+        [ Html.text <| headerCaption item ]
 
 
 keyedHeaderView : MovableList -> HeaderClass -> Move.Model MovableList Key -> Int -> Key -> ( String, Html.Html Msg )
@@ -268,7 +273,7 @@ ghostView dndModel =
         Just { dragItem } ->
             Html.div
                 ((moduleClass |> WeakCss.nest "ghost") :: dnd.ghostStyles dndModel)
-                [ Html.text <| (String.fromInt >> (++) "header-") dragItem ]
+                [ Html.text <| headerCaption dragItem ]
 
         Nothing ->
             Html.text ""
