@@ -14,25 +14,22 @@ li {
 }
 
 .s {
-    &__main {
-        display: flex;
-        justify-content: center;
-
+    &__container {
         width: 100%;
         height: 100%;
 
-        padding: 150px 0 150px 0;
+        padding: 50px 0 50px 50px;
 
         &.drag-drop-occurring {
             cursor: default;
             cursor: grabbing;
         }
-    }
 
-    &__container-scroll {
-        overflow: auto;
-        width: 300px;
-        height: 450px;
+        &--scrollable {
+            overflow: auto;
+            width: 300px;
+            height: 450px;
+        }
     }
 
     &__list {
@@ -60,8 +57,6 @@ li {
             }
 
             &.mouseover {
-                cursor: default;
-                cursor: grabbing;
                 background-color: #33614f;
                 color: #ffffff;
             }

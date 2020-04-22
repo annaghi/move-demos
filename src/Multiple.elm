@@ -92,13 +92,13 @@ update msg model =
 -- YOUR CUSTOM MOVE
 
 
-convertItem1ToItem2 : String -> Int
-convertItem1ToItem2 =
+item1ToItem2 : String -> Int
+item1ToItem2 =
     String.dropLeft 4 >> String.toInt >> Maybe.withDefault -1 >> (*) 10
 
 
-convertItem2ToItem1 : Int -> String
-convertItem2ToItem1 =
+item2ToItem1 : Int -> String
+item2ToItem1 =
     String.fromInt >> (++) "new-"
 
 
@@ -133,12 +133,12 @@ move { dragIndex, dragItem, dropList, dropIndex } model =
         ( Item1 item1, List2 ) ->
             { model
                 | list1 = List.filter ((/=) item1) model.list1
-                , list2 = insertAt dropIndex (convertItem1ToItem2 item1) model.list2
+                , list2 = insertAt dropIndex (item1ToItem2 item1) model.list2
             }
 
         ( Item2 item2, List1 ) ->
             { model
-                | list1 = insertAt dropIndex (convertItem2ToItem1 item2) model.list1
+                | list1 = insertAt dropIndex (item2ToItem1 item2) model.list1
                 , list2 = List.filter ((/=) item2) model.list2
             }
 
@@ -150,6 +150,10 @@ move { dragIndex, dragItem, dropList, dropIndex } model =
 moduleClass : WeakCss.ClassName
 moduleClass =
     WeakCss.namespace "m"
+
+
+
+-- List 1
 
 
 item1View : List ( String, Bool ) -> List (Html.Attribute Msg) -> String -> String -> Html.Html Msg
@@ -203,6 +207,10 @@ list1View dndModel list =
         |> Html.Keyed.node "ul" [ moduleClass |> WeakCss.nest "list" ]
 
 
+
+-- List 2
+
+
 item2View : List ( String, Bool ) -> List (Html.Attribute Msg) -> Int -> String -> Html.Html Msg
 item2View states events item htmlId =
     Html.li
@@ -254,6 +262,10 @@ list2View dndModel list =
         |> Html.Keyed.node "ul" [ moduleClass |> WeakCss.nest "list" ]
 
 
+
+-- Ghost
+
+
 ghostView : Move.Model MovableList MovableItem -> Html.Html Msg
 ghostView dndModel =
     case dnd.info dndModel of
@@ -277,15 +289,15 @@ view : Model -> Html.Html Msg
 view model =
     Html.main_
         [ moduleClass
-            |> WeakCss.add "main"
+            |> WeakCss.add "container"
             |> WeakCss.withStates [ ( "drag-drop-occurring", dnd.info model.dndModel /= Nothing ) ]
         ]
         [ Html.div
-            [ moduleClass |> WeakCss.nest "container-scroll"
+            [ moduleClass |> WeakCss.nestMany [ "container", "scrollable" ]
             , Html.Attributes.id scrollableContainerId
             ]
             [ Html.div
-                [ moduleClass |> WeakCss.nest "container" ]
+                [ moduleClass |> WeakCss.nestMany [ "container", "scrollable", "wrap" ] ]
                 [ list1View model.dndModel ("list-1-static-item" :: model.list1)
                 , list2View model.dndModel (0 :: model.list2)
                 ]

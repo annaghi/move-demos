@@ -12,6 +12,10 @@ import WeakCss
 -- DND
 
 
+type alias Item =
+    String
+
+
 scrollableContainerId : String
 scrollableContainerId =
     "id-container-scroll"
@@ -26,10 +30,6 @@ dnd =
 
 
 -- MODEL
-
-
-type alias Item =
-    String
 
 
 type alias Model =
@@ -73,9 +73,9 @@ update msg model =
                     dnd.update dndMsg model.dndModel
             in
             case return of
-                Just { dragIndex, dropIndex, dragItem } ->
+                Just { dragIndex, dropIndex } ->
                     ( { model
-                        | list = move dragIndex dropIndex model.list
+                        | list = reorder dragIndex dropIndex model.list
                         , dndModel = dndModel
                       }
                     , dndCmd
@@ -90,11 +90,11 @@ update msg model =
 
 
 
--- YOUR CUSTOM MOVE
+-- YOUR CUSTOM REORDER
 
 
-move : Int -> Int -> List a -> List a
-move dragIndex dropIndex list =
+reorder : Int -> Int -> List item -> List item
+reorder dragIndex dropIndex list =
     if dragIndex < dropIndex then
         rotate dragIndex dropIndex list
 
@@ -110,29 +110,29 @@ move dragIndex dropIndex list =
         list
 
 
-rotate : Int -> Int -> List a -> List a
+rotate : Int -> Int -> List item -> List item
 rotate i j list =
     let
         n : Int
         n =
             List.length list
 
-        beginning : List a
+        beginning : List item
         beginning =
             List.take i list
 
-        middle : List a
+        middle : List item
         middle =
             list |> List.drop i |> List.take (j - i + 1)
 
-        end : List a
+        end : List item
         end =
             list |> List.reverse |> List.take (n - j - 1) |> List.reverse
     in
     beginning ++ rotateRecursive middle ++ end
 
 
-rotateRecursive : List a -> List a
+rotateRecursive : List item -> List item
 rotateRecursive list =
     case list of
         [] ->
@@ -141,8 +141,8 @@ rotateRecursive list =
         [ x ] ->
             [ x ]
 
-        x :: [ y ] ->
-            y :: [ x ]
+        [ x, y ] ->
+            [ y, x ]
 
         x :: y :: rest ->
             y :: rotateRecursive (x :: rest)
@@ -220,11 +220,11 @@ view : Model -> Html.Html Msg
 view model =
     Html.main_
         [ moduleClass
-            |> WeakCss.add "main"
+            |> WeakCss.add "container"
             |> WeakCss.withStates [ ( "drag-drop-occurring", dnd.info model.dndModel /= Nothing ) ]
         ]
         [ Html.div
-            [ moduleClass |> WeakCss.nest "container-scroll"
+            [ moduleClass |> WeakCss.nestMany [ "container", "scrollable" ]
             , Html.Attributes.id scrollableContainerId
             ]
             [ listView model.dndModel model.list ]
