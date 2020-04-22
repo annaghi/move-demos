@@ -182,12 +182,13 @@ keyedItem1View dndModel index item =
         states =
             case dnd.info dndModel of
                 Just { dragList, dropList, dragIndex, dropIndex, dragItem } ->
-                    [ ( "placeholder", dragIndex == index && dragList == List1 )
+                    [ ( "first", isFirstItem )
+                    , ( "placeholder", dragIndex == index && dragList == List1 )
                     , ( "mouseover", dropIndex == index && dropList == List1 && dragItem /= Item1 item )
                     ]
 
                 _ ->
-                    []
+                    [ ( "first", isFirstItem ) ]
 
         events : List (Html.Attribute Msg)
         events =
@@ -237,12 +238,13 @@ keyedItem2View dndModel index item =
         states =
             case dnd.info dndModel of
                 Just { dragList, dropList, dragIndex, dropIndex, dragItem } ->
-                    [ ( "placeholder", dragIndex == index && dragList == List2 )
+                    [ ( "first", isFirstItem )
+                    , ( "placeholder", dragIndex == index && dragList == List2 )
                     , ( "mouseover", dropIndex == index && dropList == List2 && dragItem /= Item2 item )
                     ]
 
                 _ ->
-                    []
+                    [ ( "first", isFirstItem ) ]
 
         events : List (Html.Attribute Msg)
         events =
