@@ -36,13 +36,12 @@ li {
         &--scrollable {
             overflow: auto;
             width: 600px;
-            height: 450px;
+            height: 250px;
 
             &--wrap {
                 padding: 0 $padding-right $padding-bottom 0;
 
-                // This is the main trouble-maker, and we cannot live without it.
-                // Comment this in and try to scroll horizontally until the end of the table.
+                // This is the main trouble-maker, and we cannot live without it. See the README.md.
                 width: calc(
                     #{$width-col} + var(--columns-count) * #{$width-col} + #{$padding-right}
                 );

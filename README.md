@@ -19,3 +19,9 @@ $ npm run t
 _Unfortunately, `elm-live` supports only `elm` files for watching, so you need to manually refresh the browser on each `scss` update._
 
 _On the bright side there is a PR already:_ [_https://github.com/wking-io/elm-live/pull/227_](https://github.com/wking-io/elm-live/pull/227)
+
+### Table
+
+The issue with table `width` highlighted in the SCSS, [see it on Codepen](https://codepen.io/annaghi/pen/oNgyLYw):
+
+![](explicit-width-of-table.gif)
