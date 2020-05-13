@@ -5,7 +5,7 @@ import Html
 import Html.Attributes
 import Html.Keyed
 import Html.Lazy
-import Move
+import NewMove
 import WeakCss
 
 
@@ -37,11 +37,11 @@ scrollableContainerId =
     "id-container-scroll"
 
 
-dnd : Move.System Msg MovableList Key
+dnd : NewMove.System Msg MovableList Key
 dnd =
-    Move.config
-        |> Move.withContainer scrollableContainerId
-        |> Move.create DnDMsg
+    NewMove.config
+        |> NewMove.withContainer scrollableContainerId
+        |> NewMove.create DnDMsg
 
 
 
@@ -49,7 +49,7 @@ dnd =
 
 
 type alias Model =
-    { dndModel : Move.Model MovableList Key
+    { dndModel : NewMove.Model MovableList Key
     , rows : List Key
     , cols : List Key
     }
@@ -97,23 +97,27 @@ subscriptions model =
 
 
 type Msg
-    = DnDMsg (Move.Msg MovableList Key)
+    = DnDMsg (NewMove.Msg MovableList Key)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update msg ({ dndModel } as model) =
     case msg of
         DnDMsg dndMsg ->
             let
-                ( return, dndModel, dndCmd ) =
+                ( return, ( dndListModel, dndGhostModel ), dndCmd ) =
                     dnd.update dndMsg model.dndModel
             in
             case return of
                 Just return_ ->
-                    ( move return_ { model | dndModel = dndModel }, dndCmd )
+                    ( move return_ { model | dndModel = { dndModel | ghost = dndGhostModel, list = dndListModel } }, dndCmd )
 
                 Nothing ->
-                    ( { model | dndModel = dndModel }, dndCmd )
+                    if dndModel.list == dndListModel then
+                        ( { model | dndModel = { dndModel | ghost = dndGhostModel } }, dndCmd )
+
+                    else
+                        ( { model | dndModel = { dndModel | ghost = dndGhostModel, list = dndListModel } }, dndCmd )
 
 
 
@@ -137,9 +141,9 @@ reorder dragItem dragIndex dropIndex list =
         list
 
 
-move : Move.Return MovableList Key -> Model -> Model
-move { dragList, dragIndex, dragItem, dropList, dropIndex } model =
-    case ( dragList, dropList ) of
+move : NewMove.Return MovableList Key -> Model -> Model
+move { dragListId, dragIndex, dragItem, dropListId, dropIndex } model =
+    case ( dragListId, dropListId ) of
         ( Rows, Rows ) ->
             { model
                 | rows = reorder dragItem dragIndex dropIndex model.rows
@@ -185,8 +189,8 @@ headerView headerClass states events item htmlId =
         [ Html.text <| String.fromInt item ]
 
 
-keyedHeaderView : MovableList -> HeaderClass -> Move.Model MovableList Key -> Int -> Key -> ( String, Html.Html Msg )
-keyedHeaderView listId headerClass dndModel index item =
+keyedHeaderView : MovableList -> HeaderClass -> NewMove.ListModel MovableList Key -> Int -> Key -> ( String, Html.Html Msg )
+keyedHeaderView listId headerClass dndListModel index item =
     let
         htmlId : String
         htmlId =
@@ -202,11 +206,11 @@ keyedHeaderView listId headerClass dndModel index item =
 
         states : List ( String, Bool )
         states =
-            case dnd.info dndModel of
-                Just { dragList, dropList, dragIndex, dropIndex, dragItem } ->
+            case dnd.info dndListModel of
+                Just { dragListId, dropListId, dragIndex, dropIndex, dragItem } ->
                     [ ( "total", isTotal index )
-                    , ( "placeholder", dragIndex == index && dragList == listId )
-                    , ( "mouseover", dropIndex == index && dropList == listId && dragItem /= item )
+                    , ( "placeholder", dragIndex == index && dragListId == listId )
+                    , ( "mouseover", dropIndex == index && dropListId == listId && dragItem /= item )
                     ]
 
                 _ ->
@@ -214,7 +218,7 @@ keyedHeaderView listId headerClass dndModel index item =
 
         events : List (Html.Attribute Msg)
         events =
-            if dnd.info dndModel == Nothing && not (isTotal index) then
+            if dnd.info dndListModel == Nothing && not (isTotal index) then
                 dnd.dragEvents listId item index htmlId
 
             else
@@ -223,15 +227,18 @@ keyedHeaderView listId headerClass dndModel index item =
     ( htmlId, headerView headerClass states events item htmlId )
 
 
-headersView : MovableList -> Move.Model MovableList Key -> List Key -> Html.Html Msg
-headersView listId dndModel list =
+headersView : MovableList -> NewMove.ListModel MovableList Key -> List Key -> Html.Html Msg
+headersView listId dndListModel list =
     let
+        _ =
+            Debug.log "headersView: check Html.Lazy" ""
+
         headerClass : HeaderClass
         headerClass =
             movableListToHeaderClass listId
     in
-    list
-        |> List.indexedMap (keyedHeaderView listId headerClass dndModel)
+    (total :: list)
+        |> List.indexedMap (keyedHeaderView listId headerClass dndListModel)
         |> Html.Keyed.node "ul" [ moduleClass |> WeakCss.nestMany [ "table", headerClass ] ]
 
 
@@ -249,7 +256,7 @@ cellsView : List Key -> List Key -> Html.Html Msg
 cellsView rows cols =
     let
         _ =
-            Debug.log "check Html.Lazy" ""
+            Debug.log "cellsView: check Html.Lazy" ""
     in
     (total :: rows)
         |> List.map
@@ -266,15 +273,15 @@ tableView model =
     Html.div
         [ moduleClass |> WeakCss.nest "table" ]
         [ Html.div [ moduleClass |> WeakCss.nestMany [ "table", "corner" ] ] [ Html.text "corner" ]
-        , headersView Rows model.dndModel (total :: model.rows)
-        , headersView Cols model.dndModel (total :: model.cols)
+        , Html.Lazy.lazy3 headersView Rows model.dndModel.list model.rows
+        , Html.Lazy.lazy3 headersView Cols model.dndModel.list model.cols
         , Html.Lazy.lazy2 cellsView model.rows model.cols
         ]
 
 
-ghostView : Move.Model MovableList Key -> Html.Html Msg
+ghostView : NewMove.Model MovableList Key -> Html.Html Msg
 ghostView dndModel =
-    case dnd.info dndModel of
+    case dnd.info dndModel.list of
         Just { dragItem } ->
             Html.div
                 ((moduleClass |> WeakCss.nest "ghost") :: dnd.ghostStyles dndModel)
@@ -297,7 +304,7 @@ view model =
     Html.main_
         [ moduleClass
             |> WeakCss.add "container"
-            |> WeakCss.withStates [ ( "drag-drop-occurring", dnd.info model.dndModel /= Nothing ) ]
+            |> WeakCss.withStates [ ( "drag-drop-occurring", dnd.info model.dndModel.list /= Nothing ) ]
         ]
         [ Html.div
             [ moduleClass |> WeakCss.nestMany [ "container", "scrollable" ]

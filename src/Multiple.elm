@@ -4,6 +4,7 @@ import Browser
 import Html
 import Html.Attributes
 import Html.Keyed
+import Html.Lazy
 import Move
 import WeakCss
 
@@ -77,15 +78,30 @@ update msg model =
     case msg of
         DnDMsg dndMsg ->
             let
-                ( return, dndModel, dndCmd ) =
+                ( return, ( dndListModel, dndGhostModel ), dndCmd ) =
                     dnd.update dndMsg model.dndModel
+
+                updateGhostDnDModel dndModel =
+                    { dndModel | ghost = dndGhostModel }
+
+                updateListAndGhostDnDModel dndModel =
+                    { dndModel | list = dndListModel, ghost = dndGhostModel }
             in
             case return of
                 Just return_ ->
-                    ( move return_ { model | dndModel = dndModel }, dndCmd )
+                    ( move return_ { model | dndModel = updateListAndGhostDnDModel model.dndModel }, dndCmd )
 
                 Nothing ->
-                    ( { model | dndModel = dndModel }, dndCmd )
+                    ( { model
+                        | dndModel =
+                            if model.dndModel.list == dndListModel then
+                                updateGhostDnDModel model.dndModel
+
+                            else
+                                updateListAndGhostDnDModel model.dndModel
+                      }
+                    , dndCmd
+                    )
 
 
 
@@ -108,8 +124,8 @@ insertAt index item list =
 
 
 move : Move.Return MovableList MovableItem -> Model -> Model
-move { dragIndex, dragItem, dropList, dropIndex } model =
-    case ( dragItem, dropList ) of
+move { dragIndex, dragItem, dropListId, dropIndex } model =
+    case ( dragItem, dropListId ) of
         ( Item1 item1, List1 ) ->
             { model
                 | list1 =
@@ -167,8 +183,8 @@ item1View states events item htmlId =
         [ Html.text item ]
 
 
-keyedItem1View : Move.Model MovableList MovableItem -> Int -> String -> ( String, Html.Html Msg )
-keyedItem1View dndModel index item =
+keyedItem1View : Move.ListModel MovableList MovableItem -> Int -> String -> ( String, Html.Html Msg )
+keyedItem1View dndListModel index item =
     let
         htmlId : String
         htmlId =
@@ -180,11 +196,11 @@ keyedItem1View dndModel index item =
 
         states : List ( String, Bool )
         states =
-            case dnd.info dndModel of
-                Just { dragList, dropList, dragIndex, dropIndex, dragItem } ->
+            case dnd.info dndListModel of
+                Just { dragListId, dropListId, dragIndex, dropIndex, dragItem } ->
                     [ ( "first", isFirstItem )
-                    , ( "placeholder", dragIndex == index && dragList == List1 )
-                    , ( "mouseover", dropIndex == index && dropList == List1 && dragItem /= Item1 item )
+                    , ( "placeholder", dragIndex == index && dragListId == List1 )
+                    , ( "mouseover", dropIndex == index && dropListId == List1 && dragItem /= Item1 item )
                     ]
 
                 _ ->
@@ -192,7 +208,7 @@ keyedItem1View dndModel index item =
 
         events : List (Html.Attribute Msg)
         events =
-            if dnd.info dndModel == Nothing && not isFirstItem then
+            if dnd.info dndListModel == Nothing && not isFirstItem then
                 dnd.dragEvents List1 (Item1 item) index htmlId
 
             else
@@ -201,10 +217,10 @@ keyedItem1View dndModel index item =
     ( htmlId, item1View states events item htmlId )
 
 
-list1View : Move.Model MovableList MovableItem -> List String -> Html.Html Msg
-list1View dndModel list =
-    list
-        |> List.indexedMap (keyedItem1View dndModel)
+list1View : Move.ListModel MovableList MovableItem -> List String -> Html.Html Msg
+list1View dndListModel list =
+    ("list-1-static-item" :: list)
+        |> List.indexedMap (keyedItem1View dndListModel)
         |> Html.Keyed.node "ul" [ moduleClass |> WeakCss.nest "list" ]
 
 
@@ -223,8 +239,8 @@ item2View states events item htmlId =
         [ Html.text <| String.fromInt item ]
 
 
-keyedItem2View : Move.Model MovableList MovableItem -> Int -> Int -> ( String, Html.Html Msg )
-keyedItem2View dndModel index item =
+keyedItem2View : Move.ListModel MovableList MovableItem -> Int -> Int -> ( String, Html.Html Msg )
+keyedItem2View dndListModel index item =
     let
         htmlId : String
         htmlId =
@@ -236,11 +252,11 @@ keyedItem2View dndModel index item =
 
         states : List ( String, Bool )
         states =
-            case dnd.info dndModel of
-                Just { dragList, dropList, dragIndex, dropIndex, dragItem } ->
+            case dnd.info dndListModel of
+                Just { dragListId, dropListId, dragIndex, dropIndex, dragItem } ->
                     [ ( "first", isFirstItem )
-                    , ( "placeholder", dragIndex == index && dragList == List2 )
-                    , ( "mouseover", dropIndex == index && dropList == List2 && dragItem /= Item2 item )
+                    , ( "placeholder", dragIndex == index && dragListId == List2 )
+                    , ( "mouseover", dropIndex == index && dropListId == List2 && dragItem /= Item2 item )
                     ]
 
                 _ ->
@@ -248,7 +264,7 @@ keyedItem2View dndModel index item =
 
         events : List (Html.Attribute Msg)
         events =
-            if dnd.info dndModel == Nothing && not isFirstItem then
+            if dnd.info dndListModel == Nothing && not isFirstItem then
                 dnd.dragEvents List2 (Item2 item) index htmlId
 
             else
@@ -257,10 +273,10 @@ keyedItem2View dndModel index item =
     ( htmlId, item2View states events item htmlId )
 
 
-list2View : Move.Model MovableList MovableItem -> List Int -> Html.Html Msg
-list2View dndModel list =
-    list
-        |> List.indexedMap (keyedItem2View dndModel)
+list2View : Move.ListModel MovableList MovableItem -> List Int -> Html.Html Msg
+list2View dndListModel list =
+    (0 :: list)
+        |> List.indexedMap (keyedItem2View dndListModel)
         |> Html.Keyed.node "ul" [ moduleClass |> WeakCss.nest "list" ]
 
 
@@ -270,7 +286,7 @@ list2View dndModel list =
 
 ghostView : Move.Model MovableList MovableItem -> Html.Html Msg
 ghostView dndModel =
-    case dnd.info dndModel of
+    case dnd.info dndModel.list of
         Just { dragItem } ->
             case dragItem of
                 Item1 item1 ->
@@ -292,7 +308,7 @@ view model =
     Html.main_
         [ moduleClass
             |> WeakCss.add "container"
-            |> WeakCss.withStates [ ( "drag-drop-occurring", dnd.info model.dndModel /= Nothing ) ]
+            |> WeakCss.withStates [ ( "drag-drop-occurring", dnd.info model.dndModel.list /= Nothing ) ]
         ]
         [ Html.div
             [ moduleClass |> WeakCss.nestMany [ "container", "scrollable" ]
@@ -300,8 +316,8 @@ view model =
             ]
             [ Html.div
                 [ moduleClass |> WeakCss.nestMany [ "container", "scrollable", "wrap" ] ]
-                [ list1View model.dndModel ("list-1-static-item" :: model.list1)
-                , list2View model.dndModel (0 :: model.list2)
+                [ Html.Lazy.lazy2 list1View model.dndModel.list model.list1
+                , Html.Lazy.lazy2 list2View model.dndModel.list model.list2
                 ]
             ]
         , ghostView model.dndModel
