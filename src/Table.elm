@@ -5,7 +5,7 @@ import Html
 import Html.Attributes
 import Html.Keyed
 import Html.Lazy
-import NewMove
+import Move
 import WeakCss
 
 
@@ -37,11 +37,11 @@ scrollableContainerId =
     "id-container-scroll"
 
 
-dnd : NewMove.System Msg MovableList Key
+dnd : Move.System Msg MovableList Key
 dnd =
-    NewMove.config
-        |> NewMove.withContainer scrollableContainerId
-        |> NewMove.create DnDMsg
+    Move.config
+        |> Move.withContainer scrollableContainerId
+        |> Move.create DnDMsg
 
 
 
@@ -49,7 +49,7 @@ dnd =
 
 
 type alias Model =
-    { dndModel : NewMove.Model MovableList Key
+    { dndModel : Move.Model MovableList Key
     , rows : List Key
     , cols : List Key
     }
@@ -97,7 +97,7 @@ subscriptions model =
 
 
 type Msg
-    = DnDMsg (NewMove.Msg MovableList Key)
+    = DnDMsg (Move.Msg MovableList Key)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -141,7 +141,7 @@ reorder dragItem dragIndex dropIndex list =
         list
 
 
-move : NewMove.Return MovableList Key -> Model -> Model
+move : Move.Return MovableList Key -> Model -> Model
 move { dragListId, dragIndex, dragItem, dropListId, dropIndex } model =
     case ( dragListId, dropListId ) of
         ( Rows, Rows ) ->
@@ -189,7 +189,7 @@ headerView headerClass states events item htmlId =
         [ Html.text <| String.fromInt item ]
 
 
-keyedHeaderView : MovableList -> HeaderClass -> NewMove.ListModel MovableList Key -> Int -> Key -> ( String, Html.Html Msg )
+keyedHeaderView : MovableList -> HeaderClass -> Move.ListModel MovableList Key -> Int -> Key -> ( String, Html.Html Msg )
 keyedHeaderView listId headerClass dndListModel index item =
     let
         htmlId : String
@@ -227,7 +227,7 @@ keyedHeaderView listId headerClass dndListModel index item =
     ( htmlId, headerView headerClass states events item htmlId )
 
 
-headersView : MovableList -> NewMove.ListModel MovableList Key -> List Key -> Html.Html Msg
+headersView : MovableList -> Move.ListModel MovableList Key -> List Key -> Html.Html Msg
 headersView listId dndListModel list =
     let
         _ =
@@ -279,7 +279,7 @@ tableView model =
         ]
 
 
-ghostView : NewMove.Model MovableList Key -> Html.Html Msg
+ghostView : Move.Model MovableList Key -> Html.Html Msg
 ghostView dndModel =
     case dnd.info dndModel.list of
         Just { dragItem } ->
