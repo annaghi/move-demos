@@ -3,10 +3,9 @@
         "watch:s:elm": "elm-live src/Single.elm --port=8081 --open --start-page=./_single/index.html -- --output=./_single/main.js --debug",
         "watch:m:elm": "elm-live src/Multiple.elm --port=8082 --open --start-page=./_multiple/index.html -- --output=./_multiple/main.js --debug",
         "watch:t:elm": "elm-live src/Table.elm --port=8083 --open --start-page=./_table/index.html -- --output=./_table/main.js --debug",
-        "watch:s:sass": "sass --watch src/single.scss:./_single/styles.css",
-        "watch:m:sass": "sass --watch src/multiple.scss:./_multiple/styles.css",
-        "watch:t:sass": "sass --watch src/table.scss:./_table/styles.css",
-        "prewatch": "sass src:./",
+        "watch:s:sass": "sass --watch scss/single.scss:./_single/styles.css",
+        "watch:m:sass": "sass --watch scss/multiple.scss:./_multiple/styles.css",
+        "watch:t:sass": "sass --watch scss/table.scss:./_table/styles.css",
         "s": "npm-run-all -p watch:s:*",
         "m": "npm-run-all -p watch:m:*",
         "t": "npm-run-all -p watch:t:*"
