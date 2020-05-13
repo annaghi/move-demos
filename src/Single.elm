@@ -4,6 +4,7 @@ import Browser
 import Html
 import Html.Attributes
 import Html.Keyed
+import Html.Lazy
 import Move
 import WeakCss
 
@@ -69,21 +70,32 @@ update msg model =
     case msg of
         DnDMsg dndMsg ->
             let
-                ( return, dndModel, dndCmd ) =
+                ( return, ( dndListModel, dndGhostModel ), dndCmd ) =
                     dnd.update dndMsg model.dndModel
+
+                updateGhostDnDModel dndModel =
+                    { dndModel | ghost = dndGhostModel }
+
+                updateListAndGhostDnDModel dndModel =
+                    { dndModel | list = dndListModel, ghost = dndGhostModel }
             in
             case return of
                 Just { dragIndex, dropIndex } ->
                     ( { model
                         | list = reorder dragIndex dropIndex model.list
-                        , dndModel = dndModel
+                        , dndModel = updateListAndGhostDnDModel model.dndModel
                       }
                     , dndCmd
                     )
 
                 Nothing ->
                     ( { model
-                        | dndModel = dndModel
+                        | dndModel =
+                            if model.dndModel.list == dndListModel then
+                                updateGhostDnDModel model.dndModel
+
+                            else
+                                updateListAndGhostDnDModel model.dndModel
                       }
                     , dndCmd
                     )
@@ -157,8 +169,8 @@ moduleClass =
     WeakCss.namespace "s"
 
 
-itemView : Move.Model () Item -> List ( String, Bool ) -> List (Html.Attribute Msg) -> Item -> String -> Html.Html Msg
-itemView dndModel states events item htmlId =
+itemView : List ( String, Bool ) -> List (Html.Attribute Msg) -> Item -> String -> Html.Html Msg
+itemView states events item htmlId =
     Html.li
         ([ moduleClass |> WeakCss.addMany [ "list", "item" ] |> WeakCss.withStates states
          , Html.Attributes.id htmlId
@@ -168,8 +180,8 @@ itemView dndModel states events item htmlId =
         [ Html.text item ]
 
 
-keyedItemView : Move.Model () Item -> Int -> Item -> ( String, Html.Html Msg )
-keyedItemView dndModel index item =
+keyedItemView : Move.ListModel () Item -> Int -> Item -> ( String, Html.Html Msg )
+keyedItemView dndListModel index item =
     let
         htmlId : String
         htmlId =
@@ -177,7 +189,7 @@ keyedItemView dndModel index item =
 
         states : List ( String, Bool )
         states =
-            case dnd.info dndModel of
+            case dnd.info dndListModel of
                 Just { dragIndex, dropIndex } ->
                     [ ( "placeholder", dragIndex == index )
                     , ( "mouseover", dropIndex == index && dragIndex /= index )
@@ -188,25 +200,29 @@ keyedItemView dndModel index item =
 
         events : List (Html.Attribute Msg)
         events =
-            if dnd.info dndModel == Nothing then
+            if dnd.info dndListModel == Nothing then
                 dnd.dragEvents () item index htmlId
 
             else
                 dnd.dropEvents () index htmlId
     in
-    ( htmlId, itemView dndModel states events item htmlId )
+    ( htmlId, itemView states events item htmlId )
 
 
-listView : Move.Model () Item -> List Item -> Html.Html Msg
-listView dndModel list =
+listView : Move.ListModel () Item -> List Item -> Html.Html Msg
+listView dndListModel list =
+    let
+        _ =
+            Debug.log "listView checking Html.Lazy" ""
+    in
     list
-        |> List.indexedMap (keyedItemView dndModel)
+        |> List.indexedMap (keyedItemView dndListModel)
         |> Html.Keyed.node "ul" [ moduleClass |> WeakCss.nest "list" ]
 
 
 ghostView : Move.Model () Item -> Html.Html Msg
 ghostView dndModel =
-    case dnd.info dndModel of
+    case dnd.info dndModel.list of
         Just { dragItem } ->
             Html.div
                 ((moduleClass |> WeakCss.nest "ghost") :: dnd.ghostStyles dndModel)
@@ -221,13 +237,14 @@ view model =
     Html.main_
         [ moduleClass
             |> WeakCss.add "container"
-            |> WeakCss.withStates [ ( "drag-drop-occurring", dnd.info model.dndModel /= Nothing ) ]
+            |> WeakCss.withStates [ ( "drag-drop-occurring", dnd.info model.dndModel.list /= Nothing ) ]
         ]
         [ Html.div
             [ moduleClass |> WeakCss.nestMany [ "container", "scrollable" ]
             , Html.Attributes.id scrollableContainerId
             ]
-            [ listView model.dndModel model.list ]
+            -- Just remove Html.Lazy.lazy2 here and check the difference in Debug.logs
+            [ Html.Lazy.lazy2 listView model.dndModel.list model.list ]
         , ghostView model.dndModel
         ]
 

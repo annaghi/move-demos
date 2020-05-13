@@ -1,9 +1,9 @@
 module Move exposing
     ( System, create, Msg
     , Config, config
-    , withContainer
+    , withContainer, withOffset
     , Info, Return
-    , Model
+    , Model, ListModel, GhostModel
     )
 
 {-|
@@ -11,10 +11,10 @@ module Move exposing
 @docs System, create, Msg
 
 @docs Config, config
-@docs withContainer
+@docs withContainer, withOffset
 
 @docs Info, Return
-@docs Model
+@docs Model, ListModel, GhostModel
 
 -}
 
@@ -51,6 +51,14 @@ type alias ContainerElementId =
     String
 
 
+type alias Offset =
+    { top : Float
+    , right : Float
+    , bottom : Float
+    , left : Float
+    }
+
+
 type alias Position =
     { x : Float
     , y : Float
@@ -58,8 +66,8 @@ type alias Position =
 
 
 type alias Return listId item =
-    { dragList : listId
-    , dropList : listId
+    { dragListId : listId
+    , dropListId : listId
     , dragIndex : DragIndex
     , dropIndex : DropIndex
     , dragItem : item
@@ -90,13 +98,19 @@ type Direction
 -- MODEL
 
 
-type Model listId item
-    = Model (Maybe (State listId item))
+type alias Model listId item =
+    { list : ListModel listId item
+    , ghost : GhostModel
+    }
 
 
-type alias State listId item =
-    { dragList : listId
-    , dropList : listId
+type ListModel listId item
+    = ListModel (Maybe (ListState listId item))
+
+
+type alias ListState listId item =
+    { dragListId : listId
+    , dropListId : listId
     , dragIndex : DragIndex
     , dropIndex : DropIndex
     , dragItem : item
@@ -105,7 +119,15 @@ type alias State listId item =
     , dragElement : Maybe Browser.Dom.Element
     , dropElement : Maybe Browser.Dom.Element
     , containerElement : Maybe Browser.Dom.Element
-    , startPosition : Position
+    }
+
+
+type GhostModel
+    = GhostModel (Maybe GhostState)
+
+
+type alias GhostState =
+    { startPosition : Position
     , prevPosition : Position
     , currentPosition : Position
     , translateVector : Position
@@ -119,17 +141,17 @@ type alias State listId item =
 type alias System msg listId item =
     { model : Model listId item
     , subscriptions : Model listId item -> Sub msg
-    , update : Msg listId item -> Model listId item -> ( Maybe (Return listId item), Model listId item, Cmd msg )
+    , update : Msg listId item -> Model listId item -> ( Maybe (Return listId item), ( ListModel listId item, GhostModel ), Cmd msg )
     , dragEvents : listId -> item -> DragIndex -> DragElementId -> List (Html.Attribute msg)
     , dropEvents : listId -> DropIndex -> DropElementId -> List (Html.Attribute msg)
     , ghostStyles : Model listId item -> List (Html.Attribute msg)
-    , info : Model listId item -> Maybe (Info listId item)
+    , info : ListModel listId item -> Maybe (Info listId item)
     }
 
 
 create : (Msg listId item -> msg) -> Config -> System msg listId item
 create toMsg configuration =
-    { model = Model Nothing
+    { model = Model (ListModel Nothing) (GhostModel Nothing)
     , subscriptions = subscriptions toMsg
     , update = update configuration toMsg
     , dragEvents = dragEvents toMsg
@@ -148,7 +170,9 @@ type Config
 
 
 type alias Options =
-    { containerElementId : ContainerElementId }
+    { containerElementId : ContainerElementId
+    , offset : Offset
+    }
 
 
 config : Config
@@ -156,9 +180,16 @@ config =
     Config defaultOptions
 
 
+defaultOffset : Offset
+defaultOffset =
+    { top = 0, right = 0, bottom = 0, left = 0 }
+
+
 defaultOptions : Options
 defaultOptions =
-    { containerElementId = "" }
+    { containerElementId = ""
+    , offset = defaultOffset
+    }
 
 
 withContainer : ContainerElementId -> Config -> Config
@@ -166,40 +197,42 @@ withContainer containerElementId (Config options) =
     Config { options | containerElementId = containerElementId }
 
 
+withOffset : Offset -> Config -> Config
+withOffset offset (Config options) =
+    Config { options | offset = offset }
+
+
 
 -- INFO
 
 
 type alias Info listId item =
-    { dragList : listId
-    , dropList : listId
+    { dragListId : listId
+    , dropListId : listId
     , dragIndex : DragIndex
     , dropIndex : DropIndex
     , dragItem : item
-    , dragElement : Browser.Dom.Element
-    , dropElement : Browser.Dom.Element
     }
 
 
-info : Model listId item -> Maybe (Info listId item)
-info (Model model) =
-    Maybe.andThen
-        (\state ->
-            Maybe.map2
-                (\dragElement dropElement ->
-                    { dragList = state.dragList
-                    , dropList = state.dropList
-                    , dragIndex = state.dragIndex
-                    , dropIndex = state.dropIndex
-                    , dragItem = state.dragItem
-                    , dragElement = dragElement
-                    , dropElement = dropElement
+info : ListModel listId item -> Maybe (Info listId item)
+info (ListModel listModel) =
+    case listModel of
+        Just listState ->
+            if listState.dragElement /= Nothing && listState.dropElement /= Nothing then
+                Just
+                    { dragListId = listState.dragListId
+                    , dropListId = listState.dropListId
+                    , dragIndex = listState.dragIndex
+                    , dropIndex = listState.dropIndex
+                    , dragItem = listState.dragItem
                     }
-                )
-                state.dragElement
-                state.dropElement
-        )
-        model
+
+            else
+                Nothing
+
+        _ ->
+            Nothing
 
 
 
@@ -254,52 +287,53 @@ type Msg listId item
 
 
 subscriptions : (Msg listId item -> msg) -> Model listId item -> Sub msg
-subscriptions toMsg (Model model) =
-    if model /= Nothing then
-        Sub.batch
-            [ Browser.Events.onMouseMove
-                (Json.Decode.map (MoveBrowser >> StateMsg >> toMsg) pagePosition)
-            , Browser.Events.onMouseUp
-                (Json.Decode.succeed (UpBrowser |> toMsg))
-            , Browser.Events.onAnimationFrameDelta (always Tick >> StateMsg >> toMsg)
-            ]
+subscriptions toMsg { list, ghost } =
+    case ( list, ghost ) of
+        ( ListModel (Just _), GhostModel (Just _) ) ->
+            Sub.batch
+                [ Browser.Events.onMouseMove
+                    (Json.Decode.map (MoveBrowser >> StateMsg >> toMsg) pagePosition)
+                , Browser.Events.onMouseUp
+                    (Json.Decode.succeed (UpBrowser |> toMsg))
+                , Browser.Events.onAnimationFrameDelta (always Tick >> StateMsg >> toMsg)
+                ]
 
-    else
-        Sub.none
+        _ ->
+            Sub.none
 
 
-direction : Position -> Dimensions -> Dimensions -> Direction
-direction position element viewport =
-    if position.y < element.y && position.x < element.x then
+direction : Position -> Offset -> Dimensions -> Dimensions -> Direction
+direction position offset element viewport =
+    if position.x < element.x + offset.left && position.y < element.y + offset.top then
         TopLeft
 
-    else if position.y < element.y && position.x > (element.x + viewport.width) then
+    else if position.x > element.x + viewport.width - offset.right && position.y < element.y + offset.top then
         TopRight
 
-    else if position.y > (element.y + viewport.height) && position.x < element.x then
+    else if position.x < element.x + offset.left && position.y > element.y + viewport.height - offset.bottom then
         BottomLeft
 
-    else if position.y > (element.y + viewport.height) && position.x > (element.x + viewport.width) then
+    else if position.x > element.x + viewport.width - offset.right && position.y > element.y + viewport.height - offset.bottom then
         BottomRight
 
-    else if position.y < element.y then
+    else if position.y < element.y + offset.top then
         Top
 
-    else if position.y > (element.y + viewport.height) then
+    else if position.y > element.y + viewport.height - offset.bottom then
         Bottom
 
-    else if position.x < element.x then
+    else if position.x < element.x + offset.left then
         Left
 
-    else if position.x > (element.x + viewport.width) then
+    else if position.x > element.x + viewport.width - offset.right then
         Right
 
     else
         None
 
 
-positionWithFence : State listId item -> Browser.Dom.Element -> Position
-positionWithFence { startPosition, currentPosition } { element } =
+positionWithFence : GhostState -> Offset -> Browser.Dom.Element -> Position
+positionWithFence { startPosition, currentPosition } offset { element } =
     if
         (startPosition.x < element.x && currentPosition.x < element.x)
             || (startPosition.x < element.x && currentPosition.y < element.y)
@@ -309,45 +343,45 @@ positionWithFence { startPosition, currentPosition } { element } =
             (currentPosition.y - startPosition.y)
 
     else
-        case direction currentPosition element element of
+        case direction currentPosition offset element element of
             TopLeft ->
                 Position
-                    (element.x - startPosition.x)
-                    (element.y - startPosition.y)
+                    (element.x - startPosition.x + offset.left)
+                    (element.y - startPosition.y + offset.top)
 
             TopRight ->
                 Position
-                    (element.x + element.width - startPosition.x)
-                    (element.y - startPosition.y)
+                    (element.x + element.width - startPosition.x - offset.right)
+                    (element.y - startPosition.y + offset.top)
 
             BottomLeft ->
                 Position
-                    (element.x - startPosition.x)
-                    (element.y + element.height - startPosition.y)
+                    (element.x - startPosition.x + offset.left)
+                    (element.y + element.height - startPosition.y - offset.bottom)
 
             BottomRight ->
                 Position
-                    (element.x + element.width - startPosition.x)
-                    (element.y + element.height - startPosition.y)
+                    (element.x + element.width - startPosition.x - offset.right)
+                    (element.y + element.height - startPosition.y - offset.bottom)
 
             Top ->
                 Position
                     (currentPosition.x - startPosition.x)
-                    (element.y - startPosition.y)
+                    (element.y - startPosition.y + offset.top)
 
             Bottom ->
                 Position
                     (currentPosition.x - startPosition.x)
-                    (element.y + element.height - startPosition.y)
+                    (element.y + element.height - startPosition.y - offset.bottom)
 
             Left ->
                 Position
-                    (element.x - startPosition.x)
+                    (element.x - startPosition.x + offset.left)
                     (currentPosition.y - startPosition.y)
 
             Right ->
                 Position
-                    (element.x + element.width - startPosition.x)
+                    (element.x + element.width - startPosition.x - offset.right)
                     (currentPosition.y - startPosition.y)
 
             None ->
@@ -356,8 +390,8 @@ positionWithFence { startPosition, currentPosition } { element } =
                     (currentPosition.y - startPosition.y)
 
 
-scrollByStep : Float -> State listId item -> ContainerElementId -> Browser.Dom.Element -> Browser.Dom.Viewport -> Task.Task Browser.Dom.Error ()
-scrollByStep step { startPosition, prevPosition, currentPosition } containerElementId { element } { viewport } =
+scrollByStep : Float -> GhostState -> Offset -> ContainerElementId -> Browser.Dom.Element -> Browser.Dom.Viewport -> Task.Task Browser.Dom.Error ()
+scrollByStep step { startPosition, prevPosition, currentPosition } offset containerElementId { element } { viewport } =
     if
         (startPosition.x < element.x && prevPosition.x < currentPosition.x && currentPosition.x < element.x)
             || (startPosition.x < element.x && prevPosition.x < currentPosition.x && currentPosition.y < element.y)
@@ -365,7 +399,7 @@ scrollByStep step { startPosition, prevPosition, currentPosition } containerElem
         Task.succeed ()
 
     else
-        case direction currentPosition element viewport of
+        case direction currentPosition offset element viewport of
             TopLeft ->
                 Task.succeed ()
 
@@ -394,28 +428,28 @@ scrollByStep step { startPosition, prevPosition, currentPosition } containerElem
                 Task.succeed ()
 
 
-autoScrollCmd : State listId item -> ContainerElementId -> Cmd (Msg listId item)
-autoScrollCmd state containerElementId =
-    case state.containerElement of
+autoScrollCmd : ListState listId item -> GhostState -> Options -> Cmd (Msg listId item)
+autoScrollCmd listState ghostState { containerElementId, offset } =
+    case listState.containerElement of
         Just containerElement ->
             Browser.Dom.getViewportOf containerElementId
-                |> Task.andThen (scrollByStep 35 state containerElementId containerElement)
+                |> Task.andThen (scrollByStep 35 ghostState offset containerElementId containerElement)
                 |> Task.attempt (always NoOp >> StateMsg)
 
         Nothing ->
             Cmd.none
 
 
-updateState : Options -> StateMsg listId item -> State listId item -> ( Maybe (Return listId item), State listId item, Cmd (Msg listId item) )
-updateState options msg state =
+updateState : Options -> StateMsg listId item -> ListState listId item -> GhostState -> ( Maybe (Return listId item), ( ListState listId item, GhostState ), Cmd (Msg listId item) )
+updateState options msg listState ghostState =
     case msg of
         MoveBrowser coordinates ->
             ( Nothing
-            , { state | prevPosition = state.currentPosition, currentPosition = coordinates }
-            , case state.dragElement of
+            , ( listState, { ghostState | prevPosition = ghostState.currentPosition, currentPosition = coordinates } )
+            , case listState.dragElement of
                 Nothing ->
                     Cmd.batch
-                        [ Task.attempt (GotDragItem >> StateMsg) (Browser.Dom.getElement state.dragElementId)
+                        [ Task.attempt (GotDragItem >> StateMsg) (Browser.Dom.getElement listState.dragElementId)
                         , Task.attempt (GotContainer >> StateMsg) (Browser.Dom.getElement options.containerElementId)
                         ]
 
@@ -423,137 +457,143 @@ updateState options msg state =
                     Cmd.none
             )
 
-        OverDropItem dropList dropIndex dropElementId ->
+        OverDropItem dropListId dropIndex dropElementId ->
             ( Nothing
-            , { state | dropList = dropList, dropIndex = dropIndex, dropElementId = dropElementId }
+            , ( { listState | dropListId = dropListId, dropIndex = dropIndex, dropElementId = dropElementId }, ghostState )
             , Task.attempt (GotDropItem >> StateMsg) (Browser.Dom.getElement dropElementId)
             )
 
         LeaveDropItem ->
             ( Nothing
-            , { state | dropList = state.dragList, dropIndex = state.dragIndex }
+            , ( { listState | dropListId = listState.dragListId, dropIndex = listState.dragIndex }, ghostState )
             , Cmd.none
             )
 
         GotDragItem (Err _) ->
             ( Nothing
-            , state
+            , ( listState, ghostState )
             , Cmd.none
             )
 
         GotDragItem (Ok dragElement) ->
             ( Nothing
-            , { state | dragElement = Just dragElement, dropElement = Just dragElement }
+            , ( { listState | dragElement = Just dragElement, dropElement = Just dragElement }, ghostState )
             , Cmd.none
             )
 
         GotDropItem (Err _) ->
             ( Nothing
-            , state
+            , ( listState, ghostState )
             , Cmd.none
             )
 
         GotDropItem (Ok dropElement) ->
             ( Nothing
-            , { state | dropElement = Just dropElement }
+            , ( { listState | dropElement = Just dropElement }, ghostState )
             , Cmd.none
             )
 
         GotContainer (Err _) ->
             ( Nothing
-            , state
+            , ( listState, ghostState )
             , Cmd.none
             )
 
         GotContainer (Ok containerElement) ->
             ( Nothing
-            , { state | containerElement = Just containerElement }
+            , ( { listState | containerElement = Just containerElement }, ghostState )
             , Cmd.none
             )
 
         Tick ->
             ( Nothing
-            , { state
-                | translateVector =
-                    case state.containerElement of
-                        Just containerElement ->
-                            positionWithFence state containerElement
+            , ( listState
+              , { ghostState
+                    | translateVector =
+                        case listState.containerElement of
+                            Just containerElement ->
+                                positionWithFence ghostState options.offset containerElement
 
-                        Nothing ->
-                            Position
-                                (state.currentPosition.x - state.startPosition.x)
-                                (state.currentPosition.y - state.startPosition.y)
-              }
-            , autoScrollCmd state options.containerElementId
+                            Nothing ->
+                                Position
+                                    (ghostState.currentPosition.x - ghostState.startPosition.x)
+                                    (ghostState.currentPosition.y - ghostState.startPosition.y)
+                }
+              )
+            , autoScrollCmd listState ghostState options
             )
 
         NoOp ->
             ( Nothing
-            , state
+            , ( listState, ghostState )
             , Cmd.none
             )
 
 
-update : Config -> (Msg listId item -> msg) -> Msg listId item -> Model listId item -> ( Maybe (Return listId item), Model listId item, Cmd msg )
-update (Config options) toMsg msg (Model model) =
-    case ( msg, model ) of
-        ( DownDragItem dragList dragItem dragIndex dragElementId coordinates, _ ) ->
+update : Config -> (Msg listId item -> msg) -> Msg listId item -> Model listId item -> ( Maybe (Return listId item), ( ListModel listId item, GhostModel ), Cmd msg )
+update (Config options) toMsg msg { list, ghost } =
+    case ( msg, list, ghost ) of
+        ( DownDragItem dragListId dragItem dragIndex dragElementId coordinates, _, _ ) ->
             ( Nothing
-            , Model <|
-                Just
-                    { dragList = dragList
-                    , dropList = dragList
-                    , dragIndex = dragIndex
-                    , dropIndex = dragIndex
-                    , dragItem = dragItem
-                    , dragElementId = dragElementId
-                    , dropElementId = dragElementId
-                    , dragElement = Nothing
-                    , dropElement = Nothing
-                    , containerElement = Nothing
-                    , startPosition = coordinates
-                    , prevPosition = coordinates
-                    , currentPosition = coordinates
-                    , translateVector = Position 0 0
-                    }
+            , ( ListModel <|
+                    Just
+                        { dragListId = dragListId
+                        , dropListId = dragListId
+                        , dragIndex = dragIndex
+                        , dropIndex = dragIndex
+                        , dragItem = dragItem
+                        , dragElementId = dragElementId
+                        , dropElementId = dragElementId
+                        , dragElement = Nothing
+                        , dropElement = Nothing
+                        , containerElement = Nothing
+                        }
+              , GhostModel <|
+                    Just
+                        { startPosition = coordinates
+                        , prevPosition = coordinates
+                        , currentPosition = coordinates
+                        , translateVector = Position 0 0
+                        }
+              )
             , Cmd.none
             )
 
-        ( StateMsg stateMsg, Just state ) ->
+        ( StateMsg stateMsg, ListModel (Just listState), GhostModel (Just ghostState) ) ->
             let
-                ( return, newModel, cmds ) =
-                    updateState options stateMsg state
+                ( return, ( newListState, newGhostState ), cmds ) =
+                    updateState options stateMsg listState ghostState
             in
             ( return
-            , Model (Just newModel)
+            , ( ListModel (Just newListState), GhostModel (Just newGhostState) )
             , Cmd.map toMsg cmds
             )
 
-        ( UpBrowser, Just state ) ->
+        ( UpBrowser, ListModel (Just listState), GhostModel (Just _) ) ->
             if
-                (state.dragList == state.dropList && state.dragIndex /= state.dropIndex)
-                    || (state.dragList /= state.dropList)
+                (listState.dragListId == listState.dropListId && listState.dragIndex /= listState.dropIndex)
+                    || (listState.dragListId /= listState.dropListId)
             then
                 ( Just
-                    { dragList = state.dragList
-                    , dropList = state.dropList
-                    , dragIndex = state.dragIndex
-                    , dropIndex = state.dropIndex
-                    , dragItem = state.dragItem
+                    { dragListId = listState.dragListId
+                    , dropListId = listState.dropListId
+                    , dragIndex = listState.dragIndex
+                    , dropIndex = listState.dropIndex
+                    , dragItem = listState.dragItem
                     }
-                , Model Nothing
+                , ( ListModel Nothing, GhostModel Nothing )
                 , Cmd.none
                 )
 
             else
                 ( Nothing
-                , Model Nothing
+                , ( ListModel Nothing, GhostModel Nothing )
                 , Cmd.none
                 )
 
         _ ->
             ( Nothing
-            , Model Nothing
+            , ( ListModel Nothing, GhostModel Nothing )
             , Cmd.none
             )
 
@@ -563,18 +603,18 @@ update (Config options) toMsg msg (Model model) =
 
 
 dragEvents : (Msg listId item -> msg) -> listId -> item -> DragIndex -> DragElementId -> List (Html.Attribute msg)
-dragEvents toMsg dragList dragItem dragIndex dragElementId =
+dragEvents toMsg dragListId dragItem dragIndex dragElementId =
     [ Html.Events.preventDefaultOn "mousedown"
         (checkedPagePosition
-            |> Json.Decode.map (DownDragItem dragList dragItem dragIndex dragElementId >> toMsg)
+            |> Json.Decode.map (DownDragItem dragListId dragItem dragIndex dragElementId >> toMsg)
             |> Json.Decode.map (\msg -> ( msg, True ))
         )
     ]
 
 
 dropEvents : (Msg listId item -> msg) -> listId -> DropIndex -> DropElementId -> List (Html.Attribute msg)
-dropEvents toMsg dropList dropIndex dropElementId =
-    [ Html.Events.onMouseOver (OverDropItem dropList dropIndex dropElementId |> StateMsg |> toMsg)
+dropEvents toMsg dropListId dropIndex dropElementId =
+    [ Html.Events.onMouseOver (OverDropItem dropListId dropIndex dropElementId |> StateMsg |> toMsg)
     , Html.Events.onMouseLeave (LeaveDropItem |> StateMsg |> toMsg)
     ]
 
@@ -610,15 +650,15 @@ baseStyles { element } =
 
 
 ghostStyles : Model listId item -> List (Html.Attribute msg)
-ghostStyles (Model model) =
-    case model of
-        Just state ->
-            case state.dragElement of
+ghostStyles { list, ghost } =
+    case ( list, ghost ) of
+        ( ListModel (Just listState), GhostModel (Just ghostState) ) ->
+            case listState.dragElement of
                 Just dragElement ->
-                    styles state.translateVector dragElement :: baseStyles dragElement
+                    styles ghostState.translateVector dragElement :: baseStyles dragElement
 
                 Nothing ->
                     []
 
-        Nothing ->
+        _ ->
             []
