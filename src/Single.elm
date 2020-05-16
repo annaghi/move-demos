@@ -73,29 +73,26 @@ update msg model =
                 ( return, ( dndListModel, dndGhostModel ), dndCmd ) =
                     dnd.update dndMsg model.dndModel
 
-                updateGhostDnDModel dndModel =
-                    { dndModel | ghost = dndGhostModel }
+                updateLazyDnDModel : Move.Model () Item -> Move.Model () Item
+                updateLazyDnDModel dndModel =
+                    if dndModel.list == dndListModel then
+                        { dndModel | ghost = dndGhostModel }
 
-                updateListAndGhostDnDModel dndModel =
-                    { dndModel | list = dndListModel, ghost = dndGhostModel }
+                    else
+                        { dndModel | list = dndListModel, ghost = dndGhostModel }
             in
             case return of
                 Just { dragIndex, dropIndex } ->
                     ( { model
                         | list = reorder dragIndex dropIndex model.list
-                        , dndModel = updateListAndGhostDnDModel model.dndModel
+                        , dndModel = Move.Model dndListModel dndGhostModel
                       }
                     , dndCmd
                     )
 
                 Nothing ->
                     ( { model
-                        | dndModel =
-                            if model.dndModel.list == dndListModel then
-                                updateGhostDnDModel model.dndModel
-
-                            else
-                                updateListAndGhostDnDModel model.dndModel
+                        | dndModel = updateLazyDnDModel model.dndModel
                       }
                     , dndCmd
                     )
