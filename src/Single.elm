@@ -73,13 +73,13 @@ update msg model =
                 ( return, ( dndListModel, dndGhostModel ), dndCmd ) =
                     dnd.update dndMsg model.dndModel
 
-                updateLazyDnDModel : Move.Model () Item -> Move.Model () Item
-                updateLazyDnDModel dndModel =
+                updateDnDModelLazily : Move.Model () Item -> Move.Model () Item
+                updateDnDModelLazily dndModel =
                     if dndModel.list == dndListModel then
                         { dndModel | ghost = dndGhostModel }
 
                     else
-                        { dndModel | list = dndListModel, ghost = dndGhostModel }
+                        Move.Model dndListModel dndGhostModel
             in
             case return of
                 Just { dragIndex, dropIndex } ->
@@ -92,7 +92,7 @@ update msg model =
 
                 Nothing ->
                     ( { model
-                        | dndModel = updateLazyDnDModel model.dndModel
+                        | dndModel = updateDnDModelLazily model.dndModel
                       }
                     , dndCmd
                     )
@@ -240,7 +240,7 @@ view model =
             [ moduleClass |> WeakCss.nestMany [ "container", "scrollable" ]
             , Html.Attributes.id scrollableContainerId
             ]
-            -- Just remove Html.Lazy.lazy2 here and check the difference in Debug.logs
+            -- Remove Html.Lazy.lazy2 here and check the difference in Debug.logs
             [ Html.Lazy.lazy2 listView model.dndModel.list model.list ]
         , ghostView model.dndModel
         ]

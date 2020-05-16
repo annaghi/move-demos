@@ -81,13 +81,13 @@ update msg model =
                 ( return, ( dndListModel, dndGhostModel ), dndCmd ) =
                     dnd.update dndMsg model.dndModel
 
-                updateLazyDnDModel : Move.Model MovableList MovableItem -> Move.Model MovableList MovableItem
-                updateLazyDnDModel dndModel =
+                updateDnDModelLazily : Move.Model MovableList MovableItem -> Move.Model MovableList MovableItem
+                updateDnDModelLazily dndModel =
                     if dndModel.list == dndListModel then
                         { dndModel | ghost = dndGhostModel }
 
                     else
-                        { dndModel | list = dndListModel, ghost = dndGhostModel }
+                        Move.Model dndListModel dndGhostModel
             in
             case return of
                 Just return_ ->
@@ -96,7 +96,7 @@ update msg model =
                     )
 
                 Nothing ->
-                    ( { model | dndModel = updateLazyDnDModel model.dndModel }
+                    ( { model | dndModel = updateDnDModelLazily model.dndModel }
                     , dndCmd
                     )
 
