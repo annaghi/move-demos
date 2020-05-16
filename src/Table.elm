@@ -101,23 +101,31 @@ type Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ dndModel } as model) =
+update msg model =
     case msg of
         DnDMsg dndMsg ->
             let
                 ( return, ( dndListModel, dndGhostModel ), dndCmd ) =
                     dnd.update dndMsg model.dndModel
+
+                updateLazyDnDModel : Move.Model MovableList Key -> Move.Model MovableList Key
+                updateLazyDnDModel dndModel =
+                    if dndModel.list == dndListModel then
+                        { dndModel | ghost = dndGhostModel }
+
+                    else
+                        { dndModel | list = dndListModel, ghost = dndGhostModel }
             in
             case return of
                 Just return_ ->
-                    ( move return_ { model | dndModel = { dndModel | ghost = dndGhostModel, list = dndListModel } }, dndCmd )
+                    ( move return_ { model | dndModel = Move.Model dndListModel dndGhostModel }
+                    , dndCmd
+                    )
 
                 Nothing ->
-                    if dndModel.list == dndListModel then
-                        ( { model | dndModel = { dndModel | ghost = dndGhostModel } }, dndCmd )
-
-                    else
-                        ( { model | dndModel = { dndModel | ghost = dndGhostModel, list = dndListModel } }, dndCmd )
+                    ( { model | dndModel = updateLazyDnDModel model.dndModel }
+                    , dndCmd
+                    )
 
 
 
