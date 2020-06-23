@@ -235,9 +235,9 @@ update msg model =
 
         GotContainerViewport (Ok viewport) ->
             let
-                calculateStartItems : Maybe SampleElements -> Window -> Window
-                calculateStartItems maybeMeasurement window =
-                    case maybeMeasurement of
+                calculateStartIndices : Maybe SampleElements -> Window -> Window
+                calculateStartIndices maybeSampleElements window =
+                    case maybeSampleElements of
                         Just { innerCell } ->
                             { window
                                 | startRowIndex = floor (viewport.viewport.y / innerCell.element.height)
@@ -247,7 +247,7 @@ update msg model =
                         _ ->
                             window
             in
-            ( { model | window = calculateStartItems model.sampleElements model.window }, Cmd.none )
+            ( { model | window = calculateStartIndices model.sampleElements model.window }, Cmd.none )
 
         GotContainerViewport (Err _) ->
             ( model, Cmd.none )
