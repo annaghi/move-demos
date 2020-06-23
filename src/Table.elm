@@ -322,8 +322,8 @@ headerView headerClass states events item htmlId =
         [ Html.text <| String.fromInt item ]
 
 
-keyedHeaderView : MovableList -> HeaderClass -> Move.ListModel MovableList Key -> Int -> Key -> ( String, Html.Html Msg )
-keyedHeaderView listId headerClass dndListModel index item =
+keyedHeaderView : MovableList -> HeaderClass -> Move.ListModel MovableList Key -> Window -> Int -> Key -> ( String, Html.Html Msg )
+keyedHeaderView listId headerClass dndListModel window index item =
     let
         htmlId : String
         htmlId =
@@ -337,25 +337,34 @@ keyedHeaderView listId headerClass dndListModel index item =
                 _ ->
                     (String.fromInt >> (++) "id-") item
 
+        globalIndex : Int
+        globalIndex =
+            case listId of
+                Rows ->
+                    window.startRowIndex + index
+
+                Cols ->
+                    window.startColIndex + index
+
         states : List ( String, Bool )
         states =
             case dnd.info dndListModel of
                 Just { dragListId, dropListId, dragIndex, dropIndex, dragItem } ->
-                    [ ( "total", isTotal index )
-                    , ( "placeholder", dragIndex == index && dragListId == listId )
-                    , ( "mouseover", dropIndex == index && dropListId == listId && dragItem /= item )
+                    [ ( "total", isTotal globalIndex )
+                    , ( "placeholder", dragIndex == globalIndex && dragListId == listId )
+                    , ( "mouseover", dropIndex == globalIndex && dropListId == listId && dragItem /= item )
                     ]
 
                 _ ->
-                    [ ( "total", isTotal index ) ]
+                    [ ( "total", isTotal globalIndex ) ]
 
         events : List (Html.Attribute Msg)
         events =
-            if dnd.info dndListModel == Nothing && not (isTotal index) then
-                dnd.dragEvents listId item index htmlId
+            if dnd.info dndListModel == Nothing && not (isTotal globalIndex) then
+                dnd.dragEvents listId item globalIndex htmlId
 
             else
-                dnd.dropEvents listId index htmlId
+                dnd.dropEvents listId globalIndex htmlId
     in
     ( htmlId, headerView headerClass states events item htmlId )
 
@@ -380,7 +389,7 @@ rowHeadersView listId dndListModel list window maybeSampleElements =
         [ (total :: list)
             |> List.drop window.startRowIndex
             |> List.take window.numberOfVisibleRows
-            |> List.indexedMap (keyedHeaderView listId headerClass dndListModel)
+            |> List.indexedMap (keyedHeaderView listId headerClass dndListModel window)
             |> Html.Keyed.node "ul"
                 [ moduleClass |> WeakCss.nestMany [ "table", headerClass, "shell" ]
                 , Html.Attributes.style "top" <| String.fromInt (round (toFloat window.startRowIndex * height)) ++ "px"
@@ -408,7 +417,7 @@ colHeadersView listId dndListModel list window maybeSampleElements =
         [ (total :: list)
             |> List.drop window.startColIndex
             |> List.take window.numberOfVisibleCols
-            |> List.indexedMap (keyedHeaderView listId headerClass dndListModel)
+            |> List.indexedMap (keyedHeaderView listId headerClass dndListModel window)
             |> Html.Keyed.node "ul"
                 [ moduleClass |> WeakCss.nestMany [ "table", headerClass, "shell" ]
                 , Html.Attributes.style "left" <| String.fromInt (round (toFloat window.startColIndex * width)) ++ "px"
@@ -500,8 +509,7 @@ actualView model =
             , Html.Attributes.id scrollableContainerId
             , Html.Attributes.attribute "style" cssVariables
             , Html.Events.on "scroll" (Json.Decode.succeed OnScroll)
-
-            --, Html.Events.on "wheel" (Json.Decode.succeed OnScroll)
+            , Html.Events.on "wheel" (Json.Decode.succeed OnScroll)
             ]
             [ Html.div
                 [ moduleClass |> WeakCss.nestMany [ "container", "scrollable", "wrap" ] ]
