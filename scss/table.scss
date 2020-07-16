@@ -19,6 +19,7 @@ li {
 
 .t {
     $width-col: 85px;
+    $height-row: 39px;
     $padding-right: 30px;
     $padding-bottom: 30px;
 
@@ -26,7 +27,12 @@ li {
         width: 100%;
         height: 100%;
 
-        padding: 50px 0 50px 50px;
+        padding: 350px 0 50px 50px;
+
+        &.hidden {
+            visibility: hidden;
+            position: absolute;
+        }
 
         &.drag-drop-occurring {
             cursor: default;
@@ -41,9 +47,12 @@ li {
             &--wrap {
                 padding: 0 $padding-right $padding-bottom 0;
 
-                // This is the main trouble-maker, and we cannot live without it. See the README.md.
                 width: calc(
                     #{$width-col} + var(--columns-count) * #{$width-col} + #{$padding-right}
+                );
+
+                height: calc(
+                    #{$height-row} + var(--rows-count) * #{$height-row} + #{$padding-bottom}
                 );
             }
         }
@@ -52,10 +61,14 @@ li {
     &__table {
         display: grid;
         grid-template-columns: $width-col auto;
-        grid-template-rows: auto;
+        grid-template-rows: $height-row auto;
         grid-template-areas:
             'corner cols'
             'rows cells';
+
+        height: 100%;
+
+        position: relative;
 
         &--corner {
             grid-area: corner;
@@ -80,44 +93,50 @@ li {
 
             position: sticky;
             left: 0;
-            background-color: #ffffff;
 
-            border-right: 2px solid #dddddd;
-            border-left: 1px solid #dddddd;
+            &--shell {
+                position: absolute;
+                left: 0;
+                right: 0;
 
-            &--item {
-                padding: 10px;
+                background-color: #ffffff;
+                border-right: 2px solid #dddddd;
+                border-left: 1px solid #dddddd;
 
-                border-bottom: 1px solid #dddddd;
+                &--item {
+                    padding: 10px;
 
-                white-space: nowrap;
+                    border-bottom: 1px solid #dddddd;
 
-                &:hover {
-                    cursor: pointer;
-                    cursor: grab;
-                    background-color: #8ed1f6;
-                }
+                    white-space: nowrap;
 
-                &.total,
-                &.total:hover {
-                    cursor: default;
-                    background-color: #999999;
-                }
+                    &:hover {
+                        cursor: pointer;
+                        cursor: grab;
+                        background-color: #8ed1f6;
+                    }
 
-                &.placeholder {
-                    background-color: #8ed1f6;
-                }
+                    &.total,
+                    &.total:hover {
+                        cursor: default;
+                        background-color: #999999;
+                    }
 
-                &.mouseover {
-                    background-color: transparent;
-                    box-shadow: 0px 2px 0px 0px #d81293;
-                    border-bottom: 1px solid #d81293;
-                }
+                    &.placeholder {
+                        background-color: #8ed1f6;
+                    }
 
-                .drag-drop-occurring &,
-                .drag-drop-occurring &.total {
-                    cursor: default;
-                    cursor: grabbing;
+                    &.mouseover {
+                        background-color: transparent;
+                        box-shadow: 0px 2px 0px 0px #d81293;
+                        border-bottom: 1px solid #d81293;
+                    }
+
+                    .drag-drop-occurring &,
+                    .drag-drop-occurring &.total {
+                        cursor: default;
+                        cursor: grabbing;
+                    }
                 }
             }
         }
@@ -127,54 +146,64 @@ li {
 
             position: sticky;
             top: 0;
-            background-color: #ffffff;
 
-            border-bottom: 2px solid #dddddd;
-            border-top: 1px solid #dddddd;
+            &--shell {
+                position: absolute;
+                top: 0;
+                bottom: 0;
 
-            display: grid;
-            grid-auto-flow: column;
-            grid-auto-columns: 1fr;
+                background-color: #ffffff;
+                border-bottom: 2px solid #dddddd;
+                border-top: 1px solid #dddddd;
 
-            &--item {
-                padding: 10px;
+                &--item {
+                    float: left;
 
-                border-right: 1px solid #dddddd;
+                    padding: 10px;
+                    width: $width-col;
 
-                white-space: nowrap;
+                    border-right: 1px solid #dddddd;
 
-                &:hover {
-                    cursor: pointer;
-                    cursor: grab;
-                    background-color: #8ed1f6;
-                }
+                    white-space: nowrap;
 
-                &.total,
-                &.total:hover {
-                    cursor: default;
-                    background-color: #999999;
-                }
+                    &:hover {
+                        cursor: pointer;
+                        cursor: grab;
+                        background-color: #8ed1f6;
+                    }
 
-                &.placeholder {
-                    background-color: #8ed1f6;
-                }
+                    &.total,
+                    &.total:hover {
+                        cursor: default;
+                        background-color: #999999;
+                    }
 
-                &.mouseover {
-                    background-color: transparent;
-                    box-shadow: 2px 0px 0px 0px #d81293;
-                    border-right: 1px solid #d81293;
-                }
+                    &.placeholder {
+                        background-color: #8ed1f6;
+                    }
 
-                .drag-drop-occurring &,
-                .drag-drop-occurring &.total {
-                    cursor: default;
-                    cursor: grabbing;
+                    &.mouseover {
+                        background-color: transparent;
+                        box-shadow: 2px 0px 0px 0px #d81293;
+                        border-right: 1px solid #d81293;
+                    }
+
+                    .drag-drop-occurring &,
+                    .drag-drop-occurring &.total {
+                        cursor: default;
+                        cursor: grabbing;
+                    }
                 }
             }
         }
 
         &--cells {
             grid-area: cells;
+
+            display: flex;
+            flex-direction: column;
+
+            position: absolute;
 
             cursor: default;
             .drag-drop-occurring & {
