@@ -94,7 +94,6 @@ type alias Model =
     , cols : List Key
     , sampleElements : Maybe SampleElements
     , window : Window
-    , scrolling : Bool
     }
 
 
@@ -110,7 +109,6 @@ init =
             , numberOfVisibleRows = 0
             , numberOfVisibleCols = 0
             }
-      , scrolling = False
       }
     , Cmd.none
     )
@@ -145,9 +143,6 @@ subscriptions model =
         , if model.sampleElements == Nothing then
             Browser.Events.onAnimationFrameDelta (\_ -> MeasureElements)
 
-          else if model.scrolling then
-            Browser.Events.onAnimationFrameDelta (\_ -> Scroll)
-
           else
             Sub.none
         ]
@@ -163,7 +158,6 @@ type Msg
     | MeasuredElements (Result Browser.Dom.Error SampleElements)
     | GotContainerViewport (Result Browser.Dom.Error Browser.Dom.Viewport)
     | OnScroll
-    | Scroll
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -226,12 +220,7 @@ update msg model =
             ( model, Cmd.none )
 
         OnScroll ->
-            ( { model | scrolling = True }, Cmd.none )
-
-        Scroll ->
-            ( { model | scrolling = False }
-            , Task.attempt GotContainerViewport (Browser.Dom.getViewportOf scrollableContainerId)
-            )
+            ( model, Task.attempt GotContainerViewport (Browser.Dom.getViewportOf scrollableContainerId) )
 
         GotContainerViewport (Ok viewport) ->
             let
